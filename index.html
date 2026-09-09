@@ -15,21 +15,12 @@
 </head>
 <body>
 <div id="root"><div id="boot">If this message stays on screen, JavaScript is switched off in this browser. Turn it on and reload.</div></div>
-
 <script>
 window.storage = {
-  get: async function (k) {
-    var v = localStorage.getItem(k);
-    if (v === null) throw new Error("key not found: " + k);
-    return { key: k, value: v, shared: false };
-  },
+  get: async function (k) { var v = localStorage.getItem(k); if (v === null) throw new Error("key not found: " + k); return { key: k, value: v, shared: false }; },
   set: async function (k, v) { localStorage.setItem(k, v); return { key: k, value: v, shared: false }; },
   delete: async function (k) { localStorage.removeItem(k); return { key: k, deleted: true, shared: false }; },
-  list: async function (p) {
-    p = p || ""; var keys = [];
-    for (var i = 0; i < localStorage.length; i++) { var key = localStorage.key(i); if (key.indexOf(p) === 0) keys.push(key); }
-    return { keys: keys, prefix: p, shared: false };
-  }
+  list: async function (p) { p = p || ""; var keys = []; for (var i = 0; i < localStorage.length; i++) { var key = localStorage.key(i); if (key.indexOf(p) === 0) keys.push(key); } return { keys: keys, prefix: p, shared: false }; }
 };
 </script>
 <script>/**
@@ -906,6 +897,7 @@ function VerbPrepTrainer() {
   const [progress, setProgress] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [storageOk, setStorageOk] = useState(true);
   const [screen, setScreen] = useState("drill");
   const [mode, setMode] = useState("type");
   const [family, setFamily] = useState("all");
@@ -929,6 +921,13 @@ function VerbPrepTrainer() {
   /* ---- load saved progress ---- */
   useEffect(() => {
     (async () => {
+      try {
+        await window.storage.set("vp-probe", "1");
+        await window.storage.get("vp-probe");
+        await window.storage.delete("vp-probe");
+      } catch (e) {
+        setStorageOk(false);
+      }
       try {
         const res = await window.storage.get(STORAGE_KEY);
         if (res && res.value) setProgress(JSON.parse(res.value));
@@ -1133,7 +1132,11 @@ function VerbPrepTrainer() {
     style: {
       color: C.muted
     }
-  }, session.seen > 0 ? Math.round(session.right / session.seen * 100) + "% this session" : "no answers yet"), /*#__PURE__*/React.createElement("button", {
+  }, stats.mastered, " of ", DECK.length, " solid"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.faint
+    }
+  }, session.seen > 0 ? Math.round(session.right / session.seen * 100) + "% today" : "new session"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setScreen(screen === "drill" ? "stats" : "drill"),
     style: {
       color: C.signal
@@ -1312,7 +1315,12 @@ function VerbPrepTrainer() {
       background: C.surface
     },
     className: "rounded-full border px-3 py-1 text-xs hover:opacity-80 focus:outline-none focus:ring-2"
-  }, f === "all" ? "everything" : f))), saveError && /*#__PURE__*/React.createElement("p", {
+  }, f === "all" ? "everything" : f))), !storageOk && /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: C.wrong
+    },
+    className: "mt-4 text-xs leading-relaxed"
+  }, "This browser is blocking storage, so nothing will be kept after you close the tab. Private browsing and opening the file directly from your downloads folder both cause this. Open the page from its web address in a normal window instead."), saveError && /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.wrong
     },
@@ -1426,8 +1434,7 @@ function VerbPrepTrainer() {
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(VerbPrepTrainer));
 
 } catch (err) {
-  document.getElementById("root").innerHTML =
-    '<div id="boot">The app failed to start: ' + (err && err.message ? err.message : err) + '</div>';
+  document.getElementById("root").innerHTML = '<div id="boot">The app failed to start: ' + (err && err.message ? err.message : err) + '</div>';
 }
 </script>
 </body>
